@@ -1,17 +1,377 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Éditeur d'Algorithmes</title>
-    <link rel="stylesheet" href="style.css">
+    <title>محرر ومفسر الخوارزميات</title>
+    <style>
+        body {
+            font-family: Arial, Tahoma, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            direction: rtl;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .editor-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        #code-editor {
+            width: 100%;
+            height: 300px;
+            font-family: monospace;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            direction: ltr;
+            resize: vertical;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .output-container {
+            margin-top: 20px;
+        }
+        #output {
+            width: 100%;
+            min-height: 100px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            direction: ltr;
+            font-size: 16px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .examples {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+        .example-item {
+            margin-bottom: 10px;
+            cursor: pointer;
+            color: #0066cc;
+        }
+        .template-btn {
+            background-color: #2196F3;
+            margin-right: 10px;
+        }
+        .template-btn:hover {
+            background-color: #0b7dda;
+        }
+        .execute-btn {
+            background-color: #ff9800;
+        }
+        .execute-btn:hover {
+            background-color: #e68a00;
+        }
+        .keywords {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f8ff;
+            border-radius: 4px;
+        }
+        .keywords h3 {
+            margin-top: 0;
+        }
+        .keyword-item {
+            display: inline-block;
+            margin: 5px;
+            padding: 5px 10px;
+            background-color: #e3f2fd;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .keyword-item:hover {
+            background-color: #bbdefb;
+        }
+        .input-dialog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .input-dialog-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 300px;
+            max-width: 90%;
+        }
+        .input-dialog-content input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            box-sizing: border-box;
+        }
+        .error {
+            color: #e53935;
+            font-weight: bold;
+        }
+        .success {
+            color: #43a047;
+        }
+        .info {
+            color: #1976d2;
+        }
+        .warning {
+            color: #ff9800;
+        }
+    </style>
 </head>
 <body>
-    <h2>Éditeur d'Algorithmes</h2>
-    <textarea id="editor" placeholder="Écrivez votre algorithme ici..."></textarea>
-    <button onclick="executerCode()">Exécuter</button>
-    <pre id="output"></pre>
+    <div class="container">
+        <h1>محرر ومفسر الخوارزميات</h1>
+        
+        <div class="editor-container">
+            <label for="code-editor">أدخل الخوارزمية هنا:</label>
+            <textarea id="code-editor" dir="ltr">Algorithme: SommeDeuxNombres
+// Calcule la somme de deux nombres
+Var
+    a, b : Entier
+    somme : Entier
+Debut
+    Ecrire("Entrez le premier nombre: ")
+    Lire(a)
+    Ecrire("Entrez le deuxième nombre: ")
+    Lire(b)
+    somme ← a + b
+    Ecrire("La somme est: ", somme)
+Fin</textarea>
+        </div>
+        
+        <div class="controls">
+            <div>
+                <button class="template-btn" onclick="insertTemplate()">إدراج قالب</button>
+                <button id="clear-button" onclick="clearEditor()">مسح المحرر</button>
+                <button id="check-button" onclick="checkAlgorithm()">فحص الأخطاء</button>
+            </div>
+            <button id="execute-button" class="execute-btn" onclick="executeAlgorithm()">تنفيذ الخوارزمية</button>
+        </div>
+        
+        <div class="output-container">
+            <label for="output">النتائج:</label>
+            <div id="output"></div>
+        </div>
+        
+        <div class="keywords">
+            <h3>كلمات مفتاحية للخوارزمية:</h3>
+            <div class="keyword-item" onclick="insertKeyword('Algorithme: ')">Algorithme:</div>
+            <div class="keyword-item" onclick="insertKeyword('Const')">Const</div>
+            <div class="keyword-item" onclick="insertKeyword('Var')">Var</div>
+            <div class="keyword-item" onclick="insertKeyword('Debut')">Debut</div>
+            <div class="keyword-item" onclick="insertKeyword('Fin')">Fin</div>
+            <div class="keyword-item" onclick="insertKeyword('Si ... Alors\n    // instructions\nFinSi')">Si ... Alors</div>
+            <div class="keyword-item" onclick="insertKeyword('Si ... Alors\n    // instructions\nSinon\n    // instructions\nFinSi')">Si ... Alors ... Sinon</div>
+            <div class="keyword-item" onclick="insertKeyword('Pour ... de ... à ... Faire\n    // instructions\nFinPour')">Pour ... Faire</div>
+            <div class="keyword-item" onclick="insertKeyword('Tant Que ... Faire\n    // instructions\nFinTantQue')">Tant Que ... Faire</div>
+            <div class="keyword-item" onclick="insertKeyword('Ecrire()')">Ecrire()</div>
+            <div class="keyword-item" onclick="insertKeyword('Lire()')">Lire()</div>
+        </div>
+        
+        <div class="examples">
+            <h3>أمثلة على الخوارزميات:</h3>
+            <div class="example-item" onclick="loadExample(1)">مثال 1: حساب مجموع رقمين</div>
+            <div class="example-item" onclick="loadExample(2)">مثال 2: التحقق من الأعداد الزوجية والفردية</div>
+            <div class="example-item" onclick="loadExample(3)">مثال 3: حساب المتوسط الحسابي لمجموعة أعداد</div>
+            <div class="example-item" onclick="loadExample(4)">مثال 4: حساب العامل المشترك الأكبر (GCD)</div>
+        </div>
+    </div>
+    
+    <div class="input-dialog" id="input-dialog">
+        <div class="input-dialog-content">
+            <p id="input-prompt">أدخل القيمة:</p>
+            <input type="text" id="input-value">
+            <button onclick="submitInput()">إدخال</button>
+        </div>
+    </div>
 
-    <script src="script.js"></script>
-</body>
-</html>
+    <script>
+        // متغيرات عامة لتنفيذ الخوارزمية
+        let variables = {};
+        let constants = {};
+        let inputQueue = [];
+        let waitingForInput = false;
+        let currentInputVar = null;
+        let algoritlmeLines = [];
+        let currentLineIndex = 0;
+        
+        // دالة لإدراج قالب خوارزمية فارغ
+        function insertTemplate() {
+            const template = `Algorithme: NomAlgorithme
+// Déclaration des constantes
+Const
+    // Définir les constantes ici
+
+// Déclaration des variables
+Var
+    // Définir les variables ici
+
+Debut
+    // Corps de l'algorithme ici
+
+Fin`;
+            document.getElementById("code-editor").value = template;
+        }
+        
+        // دالة لمسح المحرر
+        function clearEditor() {
+            document.getElementById("code-editor").value = "";
+        }
+        
+        // دالة لإدراج كلمة مفتاحية في موضع المؤشر
+        function insertKeyword(keyword) {
+            const editor = document.getElementById("code-editor");
+            const cursorPos = editor.selectionStart;
+            const textBefore = editor.value.substring(0, cursorPos);
+            const textAfter = editor.value.substring(editor.selectionEnd);
+            
+            // التحقق مما إذا كنا بحاجة إلى إضافة سطر جديد قبل إدراج الكلمة المفتاحية
+            const needNewLine = cursorPos > 0 && editor.value.charAt(cursorPos - 1) !== '\n';
+            const textToInsert = needNewLine ? '\n' + keyword : keyword;
+            
+            editor.value = textBefore + textToInsert + textAfter;
+            editor.focus();
+            editor.selectionStart = editor.selectionEnd = cursorPos + textToInsert.length;
+        }
+        
+        // دالة لتحميل أمثلة مختلفة
+        function loadExample(exampleNumber) {
+            const codeEditor = document.getElementById("code-editor");
+            
+            switch(exampleNumber) {
+                case 1:
+                    codeEditor.value = `Algorithme: SommeDeuxNombres
+// Calcule la somme de deux nombres
+Var
+    a, b : Entier
+    somme : Entier
+Debut
+    Ecrire("Entrez le premier nombre: ")
+    Lire(a)
+    Ecrire("Entrez le deuxième nombre: ")
+    Lire(b)
+    somme ← a + b
+    Ecrire("La somme est: ", somme)
+Fin`;
+                    break;
+                case 2:
+                    codeEditor.value = `Algorithme: VerificationPariteNombre
+// Vérifie si un nombre est pair ou impair
+Var
+    nombre : Entier
+Debut
+    Ecrire("Entrez un nombre entier: ")
+    Lire(nombre)
+    
+    Si nombre mod 2 = 0 Alors
+        Ecrire(nombre, " est un nombre pair")
+    Sinon
+        Ecrire(nombre, " est un nombre impair")
+    FinSi
+Fin`;
+                    break;
+                case 3:
+                    codeEditor.value = `Algorithme: MoyenneDeSerie
+// Calcule la moyenne d'une série de nombres
+Var
+    n, i : Entier
+    nombre, somme, moyenne : Réel
+Debut
+    somme ← 0
+    
+    Ecrire("Combien de nombres voulez-vous entrer? ")
+    Lire(n)
+    
+    Pour i de 1 à n Faire
+        Ecrire("Entrez le nombre ", i, ": ")
+        Lire(nombre)
+        somme ← somme + nombre
+    FinPour
+    
+    moyenne ← somme / n
+    Ecrire("La moyenne des ", n, " nombres est: ", moyenne)
+Fin`;
+                    break;
+                case 4:
+                    codeEditor.value = `Algorithme: CalculGCD
+// Calcule le plus grand diviseur commun (GCD) de deux nombres
+Var
+    a, b, temp : Entier
+Debut
+    Ecrire("Entrez le premier nombre: ")
+    Lire(a)
+    Ecrire("Entrez le deuxième nombre: ")
+    Lire(b)
+    
+    // Algorithme d'Euclide
+    Tant Que b ≠ 0 Faire
+        temp ← b
+        b ← a mod b
+        a ← temp
+    FinTantQue
+    
+    Ecrire("Le GCD est: ", a)
+Fin`;
+                    break;
+            }
+        }
+        
+        // دالة لفحص الخوارزمية والتحقق من الأخطاء
+        function checkAlgorithm() {
+            const code = document.getElementById("code-editor").value;
+            const output = document.getElementById("output");
+            output.innerHTML = "";
+            
+            // فحص الهيكل العام للخوارزمية
+            if (!code.includes("Algorithme:")) {
+                appendOutput("خطأ: لم يتم العثور على كلمة 'Algorithme:' في بداية الخوارزمية", "error");
+            }
+            
+            if (!code.includes("Debut")) {
+                appendOutput("خطأ: لم يتم العثور على كلمة 'Debut' في الخوارزمية", "error");
+            }
+            
+            if (!code.includes("Fin")) {
+                appendOutput("خطأ: لم يتم العثور على كلمة 'Fin' في الخو
