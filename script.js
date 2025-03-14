@@ -365,3 +365,315 @@ function executeLine(line) {
     } else if (line.startsWith("Tant Que ")) {
         executeWhileLoop(line);
     } else if (line === "Sinon" || line === "FinSi" || line === "
+
+// دالة لتنفيذ أمر Ecrire (الطباعة)
+function executeEcrire(line) {
+    // استخراج محتوى الطباعة بين الأقواس
+    const matchContent = line.match(/Ecrire\((.*)\)/);
+    if (matchContent) {
+        const content = matchContent[1];
+        // تقسيم المحتوى إذا كان هناك عدة عناصر مفصولة بفواصل
+        const parts = parseParameters(content);
+        let outputText = "";
+        
+        // معالجة كل جزء من أجزاء الطباعة
+        for (const part of parts) {
+            if (part.startsWith('"') && part.endsWith('"')) {
+                // إذا كان نص حرفي داخل علامات اقتباس
+                outputText += part.substring(1, part.length - 1);
+            } else {
+                // إذا كان متغير أو تعبير، قم بتقييمه
+                const value = evaluateExpression(part);
+                outputText += value;
+            }
+        }
+        
+        appendOutput(outputText, "output");
+    } else {
+        throw new Error("صيغة Ecrire غير صحيحة: " + line);
+    }
+}
+
+// دالة لتنفيذ أمر Lire (القراءة)
+function executeLire(line) {
+    // استخراج اسم المتغير من داخل الأقواس
+    const matchVarName = line.match(/Lire\(([a-zA-Z][a-zA-Z0-9_]*)\)/);
+    if (matchVarName) {
+        const varName = matchVarName[1];
+        
+        // التحقق من وجود المتغير
+        if (!variables[varName]) {
+            throw new Error("متغير غير معرف: " + varName);
+        }
+        
+        // وضع علامة على أننا في انتظار إدخال
+        waitingForInput = true;
+        currentInputVar = varName;
+        
+        // طلب الإدخال من المستخدم
+        appendOutput("الرجاء إدخال قيمة لـ " + varName + ":", "input-prompt");
+        document.getElementById("user-input").focus();
+    } else {
+        throw new Error("صيغة Lire غير صحيحة: " + line);
+    }
+}
+
+// دالة لمعالجة الإدخال من المستخدم
+function processInput() {
+    const inputElement = document.getElementById("user-input");
+    const inputValue = inputElement.value.trim();
+    inputElement.value = "";
+    
+    if (waitingForInput && currentInputVar) {
+        try {
+            // تحويل القيمة المدخلة حسب نوع المتغير
+            let parsedValue;
+            const varType = variables[currentInputVar].type;
+            
+            if (varType === "Entier") {
+                parsedValue = parseInt(inputValue);
+                if (isNaN(parsedValue)) {
+                    throw new Error("يجب إدخال قيمة عددية صحيحة");
+                }
+            } else if (varType === "Réel") {
+                parsedValue = parseFloat(inputValue);
+                if (isNaN(parsedValue)) {
+                    throw new Error("يجب إدخال قيمة عددية");
+                }
+            } else if (varType === "Chaine" || varType === "Chaîne") {
+                parsedValue = inputValue;
+            } else if (varType === "Booléen" || varType === "Booleen") {
+                if (inputValue.toLowerCase() === "vrai" || inputValue.toLowerCase() === "true") {
+                    parsedValue = true;
+                } else if (inputValue.toLowerCase() === "faux" || inputValue.toLowerCase() === "false") {
+                    parsedValue = false;
+                } else {
+                    throw new Error("يجب إدخال قيمة منطقية (vrai/faux)");
+                }
+            } else {
+                parsedValue = inputValue;
+            }
+            
+            // تخزين القيمة في المتغير
+            variables[currentInputVar].value = parsedValue;
+            appendOutput(`تم تخزين القيمة '${parsedValue}' في ${currentInputVar}`, "info");
+            
+            // إعادة تعيين حالة الإدخال
+            waitingForInput = false;
+            currentInputVar = null;
+            
+            // استئناف التنفيذ
+            currentLineIndex++;
+            setTimeout(executeNextLine, 100);
+        } catch (error) {
+            appendOutput("خطأ في الإدخال: " + error.message, "error");
+            // السماح بإعادة المحاولة
+            document.getElementById("user-input").focus();
+        }
+    }
+}
+
+// دالة لتنفيذ عملية الإسناد (التعيين)
+function executeAssignment(line) {
+    // استخراج اسم المتغير والتعبير
+    const assignmentMatch = line.match(/^([a-zA-Z][a-zA-Z0-9_]*)\s*←\s*(.+)$/);
+    if (assignmentMatch) {
+        const varName = assignmentMatch[1];
+        const expression = assignmentMatch[2];
+        
+        // التحقق من وجود المتغير
+        if (!variables[varName]) {
+            throw new Error("متغير غير معرف: " + varName);
+        }
+        
+        // تقييم التعبير وتخزين النتيجة
+        const value = evaluateExpression(expression);
+        variables[varName].value = value;
+        
+        appendOutput(`${varName} ← ${value}`, "assignment");
+    } else {
+        throw new Error("صيغة الإسناد غير صحيحة: " + line);
+    }
+}
+
+// دالة لتنفيذ جملة الشرط (If)
+function executeIfStatement(line) {
+    // استخراج الشرط
+    const conditionMatch = line.match(/Si\s+(.+)\s+Alors$/);
+    if (!conditionMatch) {
+        throw new Error("صيغة جملة Si غير صحيحة: " + line);
+    }
+    
+    const condition = conditionMatch[1];
+    const isTrue = evaluateCondition(condition);
+    
+    // البحث عن نهاية كتلة Si (FinSi) أو كتلة Sinon
+    let blockEndIndex = findBlockEnd(currentLineIndex, "Si", "FinSi");
+    let elseIndex = findElse(currentLineIndex, blockEndIndex);
+    
+    if (isTrue) {
+        // الشرط صحيح، استمر في التنفيذ
+        appendOutput(`الشرط [${condition}] = صحيح، تنفيذ كتلة Si`, "control");
+    } else {
+        // الشرط غير صحيح، انتقل إلى كتلة Sinon أو FinSi
+        appendOutput(`الشرط [${condition}] = خاطئ، تخطي كتلة Si`, "control");
+        if (elseIndex !== -1) {
+            currentLineIndex = elseIndex; // انتقل إلى كتلة Sinon
+        } else {
+            currentLineIndex = blockEndIndex; // انتقل إلى FinSi
+        }
+    }
+}
+
+// دالة للبحث عن Sinon بين الأسطر المحددة
+function findElse(startIndex, endIndex) {
+    for (let i = startIndex + 1; i < endIndex; i++) {
+        if (algoritlmeLines[i].trim() === "Sinon") {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// دالة لتنفيذ جملة التكرار (Pour)
+function executeForLoop(line) {
+    // استخراج متغير التكرار والقيم
+    const forMatch = line.match(/Pour\s+([a-zA-Z][a-zA-Z0-9_]*)\s+de\s+(.+)\s+à\s+(.+)\s+Faire$/);
+    if (!forMatch) {
+        throw new Error("صيغة حلقة Pour غير صحيحة: " + line);
+    }
+    
+    const loopVar = forMatch[1];
+    const startValue = evaluateExpression(forMatch[2]);
+    const endValue = evaluateExpression(forMatch[3]);
+    
+    // إنشاء متغير التكرار إذا لم يكن موجوداً
+    if (!variables[loopVar]) {
+        variables[loopVar] = { type: "Entier", value: startValue };
+    } else {
+        variables[loopVar].value = startValue;
+    }
+    
+    // البحث عن نهاية حلقة التكرار
+    const blockEndIndex = findBlockEnd(currentLineIndex, "Pour", "FinPour");
+    
+    // حفظ معلومات حلقة التكرار
+    const loopInfo = {
+        type: "Pour",
+        variable: loopVar,
+        startValue: startValue,
+        endValue: endValue,
+        bodyStartIndex: currentLineIndex + 1,
+        bodyEndIndex: blockEndIndex - 1,
+        iteration: 1
+    };
+    
+    // التحقق مما إذا كانت الحلقة ستنفذ
+    if (startValue <= endValue) {
+        appendOutput(`بدء حلقة Pour مع ${loopVar} = ${startValue}`, "control");
+        // حفظ معلومات الحلقة في المكدس (stack)
+        pushLoopInfo(loopInfo);
+    } else {
+        // الحلقة لن تنفذ، انتقل إلى FinPour
+        appendOutput(`تخطي حلقة Pour (${startValue} > ${endValue})`, "control");
+        currentLineIndex = blockEndIndex;
+    }
+}
+
+// دالة لتنفيذ جملة التكرار الشرطي (Tant Que)
+function executeWhileLoop(line) {
+    // استخراج الشرط
+    const whileMatch = line.match(/Tant\s+Que\s+(.+)\s+Faire$/);
+    if (!whileMatch) {
+        throw new Error("صيغة حلقة Tant Que غير صحيحة: " + line);
+    }
+    
+    const condition = whileMatch[1];
+    const isTrue = evaluateCondition(condition);
+    
+    // البحث عن نهاية حلقة التكرار
+    const blockEndIndex = findBlockEnd(currentLineIndex, "Tant Que", "FinTantQue");
+    
+    // التحقق مما إذا كان الشرط صحيحاً
+    if (isTrue) {
+        appendOutput(`الشرط [${condition}] = صحيح، تنفيذ حلقة Tant Que`, "control");
+        
+        // حفظ معلومات الحلقة في المكدس
+        const loopInfo = {
+            type: "TantQue",
+            condition: condition,
+            bodyStartIndex: currentLineIndex + 1,
+            bodyEndIndex: blockEndIndex - 1,
+            iteration: 1
+        };
+        pushLoopInfo(loopInfo);
+    } else {
+        // الشرط غير صحيح، انتقل إلى FinTantQue
+        appendOutput(`الشرط [${condition}] = خاطئ، تخطي حلقة Tant Que`, "control");
+        currentLineIndex = blockEndIndex;
+    }
+}
+
+// دالة للبحث عن نهاية كتلة (Block)
+function findBlockEnd(startIndex, startKeyword, endKeyword) {
+    let depth = 1;
+    let i = startIndex + 1;
+    
+    while (i < algoritlmeLines.length && depth > 0) {
+        const line = algoritlmeLines[i].trim();
+        
+        if (line.startsWith(startKeyword + " ")) {
+            depth++;
+        } else if (line === endKeyword) {
+            depth--;
+        }
+        
+        if (depth === 0) {
+            return i;
+        }
+        
+        i++;
+    }
+    
+    throw new Error(`لم يتم العثور على ${endKeyword} المقابل لـ ${startKeyword}`);
+}
+
+// دالة لتقييم التعبيرات الحسابية والمنطقية
+function evaluateExpression(expression) {
+    if (!expression) return null;
+    
+    expression = expression.trim();
+    
+    // التحقق من القيم المباشرة (أعداد، نصوص، قيم منطقية)
+    if (expression === "vrai" || expression === "true") return true;
+    if (expression === "faux" || expression === "false") return false;
+    
+    // إذا كان نص حرفي
+    if (expression.startsWith('"') && expression.endsWith('"')) {
+        return expression.substring(1, expression.length - 1);
+    }
+    
+    // التحقق من وجود المتغير
+    if (/^[a-zA-Z][a-zA-Z0-9_]*$/.test(expression)) {
+        if (variables[expression]) {
+            return variables[expression].value;
+        } else if (constants[expression]) {
+            return constants[expression];
+        } else {
+            throw new Error("متغير أو ثابت غير معرف: " + expression);
+        }
+    }
+    
+    // تحويل العمليات الحسابية والمنطقية
+    expression = expression.replace(/\bmod\b/g, "%");  // تحويل mod إلى %
+    expression = expression.replace(/\bdiv\b/g, "/");  // تحويل div إلى /
+    expression = expression.replace(/\bet\b/g, "&&");  // تحويل et إلى &&
+    expression = expression.replace(/\bou\b/g, "||");  // تحويل ou إلى ||
+    expression = expression.replace(/\bnon\b/g, "!");  // تحويل non إلى !
+    expression = expression.replace(/=/g, "==");       // تحويل = إلى ==
+    expression = expression.replace(/≠/g, "!=");       // تحويل ≠ إلى !=
+    expression = expression.replace(/≤/g, "<=");       // تحويل ≤ إلى <=
+    expression = expression.replace(/≥/g, ">=");       // تحويل ≥ إلى >=
+    
+    // استبدال المتغيرات بقيمها
+
